@@ -1,0 +1,100 @@
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+local runService = game:GetService("RunService")
+
+local rayLength = 300
+local teleportDistance = 5000
+local updateInterval = 0.06
+
+local teleportedObjects = {} -- Таблица для хранения перемещенных объектов и их исходных позиций
+
+-- Функция для проверки, является ли объект частью игрока
+local function isPartOfPlayer(obj)
+    local character = player.Character
+    if character and (obj:IsDescendantOf(character) or obj:IsA("Player")) then
+        return true
+    end
+    return false
+end
+
+-- Функция для проверки, может ли объект двигаться
+local function isMovable(obj)
+    if obj:IsA("BasePart") then
+        return not obj.Anchored -- Если объект не закреплен, он может двигаться
+    end
+    return false
+end
+
+local function teleportObjectsInRay()
+    local camera = workspace.CurrentCamera
+    local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+    local ray = camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
+    
+    -- Создаем список игнорируемых объектов
+    local ignoreList = {player.Character}
+    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            table.insert(ignoreList, otherPlayer.Character)
+        end
+    end
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = ignoreList
+    
+    local result = workspace:Raycast(ray.Origin, ray.Direction * rayLength, raycastParams)
+    
+    if result then
+        local hit = result.Instance
+        if hit and not isPartOfPlayer(hit) and not isMovable(hit) then
+            if not teleportedObjects[hit] then
+                -- Сохраняем исходную позицию объекта
+                teleportedObjects[hit] = hit.Position
+                -- Перемещаем объект на 5000 метров вверх
+                hit.Position = hit.Position + Vector3.new(0, teleportDistance, 0)
+            end
+        end
+    end
+end
+
+local function returnObjects()
+    for obj, originalPosition in pairs(teleportedObjects) do
+        if obj and obj.Parent then -- Проверяем, что объект все еще существует
+            obj.Position = originalPosition -- Возвращаем объект на место
+        end
+    end
+    teleportedObjects = {} -- Очищаем таблицу
+end
+
+-- Обработка зажатия и отпускания правой кнопки мыши
+mouse.Button2Down:Connect(function()
+    -- Запускаем луч, пока кнопка зажата
+    local connection
+    connection = runService.Heartbeat:Connect(function()
+        teleportObjectsInRay()
+    end)
+    
+    -- Когда кнопка отпущена, останавливаем луч и возвращаем объекты
+    mouse.Button2Up:Wait()
+    connection:Disconnect() -- Останавливаем обновление луча
+    returnObjects() -- Возвращаем объекты на место
+end)
+
+--Send Notification
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+
+-- Создаем функцию для отображения оповещения
+local function sendNotification()
+    local message = "IGNORE FLOOR"
+    
+    -- Отправляем уведомление всем игрокам
+    StarterGui:SetCore("SendNotification", {
+        Title = "LASER",
+        Text = message,
+        Duration = 4 -- Продолжительность уведомления в секундах
+    })
+end
+
+-- Вызываем функцию
+sendNotification()

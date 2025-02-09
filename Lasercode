@@ -1,12 +1,31 @@
-local player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+
+local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 local runService = game:GetService("RunService")
 
 local rayLength = 300
 local teleportDistance = 5000
-local updateInterval = 0.06
-
 local teleportedObjects = {} -- Таблица для хранения перемещенных объектов и их исходных позиций
+local isEnabled = false -- Состояние функции
+
+local function sendNotification(title, message)
+    StarterGui:SetCore("SendNotification", {
+        Title = title,
+        Text = message,
+        Duration = 4
+    })
+end
+
+local function toggleFeature()
+    isEnabled = not isEnabled
+    if isEnabled then
+        sendNotification("ENABLE", "Функция активирована.")
+    else
+        sendNotification("DISABLE", "Функция деактивирована.")
+    end
+end
 
 -- Функция для проверки, является ли объект частью игрока
 local function isPartOfPlayer(obj)
@@ -26,13 +45,15 @@ local function isMovable(obj)
 end
 
 local function teleportObjectsInRay()
+    if not isEnabled then return end -- Проверяем, включена ли функция
+
     local camera = workspace.CurrentCamera
     local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
     local ray = camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
     
     -- Создаем список игнорируемых объектов
     local ignoreList = {player.Character}
-    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
         if otherPlayer ~= player and otherPlayer.Character then
             table.insert(ignoreList, otherPlayer.Character)
         end
@@ -66,9 +87,15 @@ local function returnObjects()
     teleportedObjects = {} -- Очищаем таблицу
 end
 
+-- Обработка нажатия клавиши "J"
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.J then
+        toggleFeature()
+    end
+end)
+
 -- Обработка зажатия и отпускания правой кнопки мыши
 mouse.Button2Down:Connect(function()
-    -- Запускаем луч, пока кнопка зажата
     local connection
     connection = runService.Heartbeat:Connect(function()
         teleportObjectsInRay()
@@ -79,7 +106,6 @@ mouse.Button2Down:Connect(function()
     connection:Disconnect() -- Останавливаем обновление луча
     returnObjects() -- Возвращаем объекты на место
 end)
-
 --Send Notification
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")

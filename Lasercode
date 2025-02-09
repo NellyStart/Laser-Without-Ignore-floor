@@ -86,7 +86,7 @@ local StarterGui = game:GetService("StarterGui")
 
 -- Создаем функцию для отображения оповещения
 local function sendNotification()
-    local message = "IGNORE FLOOR"
+    local message = "LETSGO"
     
     -- Отправляем уведомление всем игрокам
     StarterGui:SetCore("SendNotification", {
